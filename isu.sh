@@ -48,9 +48,11 @@ if [ ${COMMAND} = "prebench" ]; then
     mkdir -p ./logs/${TIME}
     if [ -f ${NGX_LOG} ]; then
         sudo mv ${NGX_LOG} ./logs/${TIME}/
+        sudo systemctl restart nginx
     fi
     if [ -f ${MYSQL_LOG} ]; then
         sudo mv ${MYSQL_LOG} ./logs/${TIME}/
+        sudo systemctl restart mysql
     fi
     cd ${BUILDDIR}
     go build -o ${APP_NAME}
