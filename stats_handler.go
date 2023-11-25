@@ -234,23 +234,30 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 
 	// ランク算出
 	var ranking LivestreamRanking
+
+	var livestreamIDs []int64
 	for _, livestream := range livestreams {
-		var reactions int64
-		if err := tx.GetContext(ctx, &reactions, "SELECT COUNT(*) FROM livestreams l INNER JOIN reactions r ON l.id = r.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count reactions: "+err.Error())
-		}
+		livestreamIDs = append(livestreamIDs, livestream.ID)
+	}
 
-		var totalTips int64
-		if err := tx.GetContext(ctx, &totalTips, "SELECT IFNULL(SUM(l2.tip), 0) FROM livestreams l INNER JOIN livecomments l2 ON l.id = l2.livestream_id WHERE l.id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tips: "+err.Error())
-		}
+	var result []struct {
+		LivestreamID  int64 `db:"livestream_id"`
+		ReactionCount int64 `db:"reaction_count"`
+		TipSum        int64 `db:"tip_sum"`
+	}
 
-		score := reactions + totalTips
+	query := `SELECT l.id AS livestream_id, COUNT(DISTINCT r.id) AS reaction_count, IFNULL(SUM(lc.tip), 0) AS tip_sum FROM livestreams l LEFT JOIN reactions r ON l.id = r.livestream_id LEFT JOIN livecomments lc ON l.id = lc.livestream_id WHERE l.id IN (?)	GROUP BY l.id`
+	if err := tx.SelectContext(ctx, &result, query, livestreamIDs); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fetch livestream information: "+err.Error())
+	}
+
+	for _, entry := range result {
 		ranking = append(ranking, LivestreamRankingEntry{
-			LivestreamID: livestream.ID,
-			Score:        score,
+			LivestreamID: entry.LivestreamID,
+			Score:        entry.ReactionCount + entry.TipSum,
 		})
 	}
+
 	sort.Sort(ranking)
 
 	var rank int64 = 1
