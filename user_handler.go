@@ -398,6 +398,7 @@ func verifyUserSession(c echo.Context) error {
 	return nil
 }
 
+// iconHashを格納している
 func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (User, error) {
 	themeModel := ThemeModel{}
 	if err := tx.GetContext(ctx, &themeModel, "SELECT * FROM themes WHERE user_id = ?", userModel.ID); err != nil {
