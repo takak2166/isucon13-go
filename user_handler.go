@@ -36,6 +36,7 @@ type UserModel struct {
 	DisplayName    string `db:"display_name"`
 	Description    string `db:"description"`
 	HashedPassword string `db:"password"`
+	IconHash       string `db:"icon_hash"`
 }
 
 type User struct {
@@ -102,6 +103,10 @@ func getIconHandler(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusNotFound, "not found user that has the given username")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
+	}
+
+	if user.IconHash == c.Request().Header.Get("If-None-Match") {
+		return c.NoContent(http.StatusNotModified)
 	}
 
 	var image []byte
@@ -416,6 +421,10 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 		}
 	}
 	iconHash := sha256.Sum256(image)
+
+	if _, err := tx.ExecContext(ctx, "UPDATE users SET icon_hash = ? WHERE id = ?", iconHash, userModel.ID); err != nil {
+		return User{}, err
+	}
 
 	user := User{
 		ID:          userModel.ID,
