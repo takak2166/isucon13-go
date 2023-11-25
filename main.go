@@ -98,6 +98,7 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(10)
+	db.MapperFunc(func(s string) string { return s })
 
 	if err := db.Ping(); err != nil {
 		return nil, err
