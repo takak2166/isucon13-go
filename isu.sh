@@ -9,7 +9,7 @@ SLACKCAT="slackcat --channel isucon12"
 # change here
 PRJ_ROOT=${HOME}/webapp/go
 APP_NAME=isupipe
-SERVICE_NAME=isu-go.service
+SERVICE_NAME=isupipe-go.service
 CONFDIR=${PRJ_ROOT}/config
 BUILDDIR=${PRJ_ROOT}
 NGX_CONF=/etc/nginx/nginx.conf
