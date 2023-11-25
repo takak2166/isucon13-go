@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
@@ -246,8 +247,23 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		TipSum        int64 `db:"tip_sum"`
 	}
 
-	query := `SELECT l.id AS livestream_id, COUNT(DISTINCT r.id) AS reaction_count, IFNULL(SUM(lc.tip), 0) AS tip_sum FROM livestreams l LEFT JOIN reactions r ON l.id = r.livestream_id LEFT JOIN livecomments lc ON l.id = lc.livestream_id WHERE l.id IN (?)	GROUP BY l.id`
-	if err := tx.SelectContext(ctx, &result, query, livestreamIDs); err != nil {
+	query := `
+	SELECT l.id AS livestream_id,
+	COUNT(DISTINCT r.id) AS reaction_count,
+	IFNULL(SUM(lc.tip), 0) AS tip_sum
+	FROM livestreams l 
+	LEFT JOIN reactions r ON l.id = r.livestream_id 
+	LEFT JOIN livecomments lc ON l.id = lc.livestream_id 
+	WHERE l.id IN (?)
+	GROUP BY l.id`
+
+	// スライスを展開してプレースホルダにセット
+	query, args, err := sqlx.In(query, livestreamIDs)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create IN clause: "+err.Error())
+	}
+
+	if err := tx.SelectContext(ctx, &result, query, args...); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fetch livestream information: "+err.Error())
 	}
 
